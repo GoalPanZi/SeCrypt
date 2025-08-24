@@ -1,8 +1,9 @@
 const { Sequelize } = require('sequelize');
-const path = require('path');
+const { initializeModels, syncModels } = require('../models/index');
 
 // Sequelize 인스턴스
 let sequelize = null;
+let models = null;
 
 // 데이터베이스 설정
 const getDatabaseConfig = () => {
@@ -50,7 +51,6 @@ const getDatabaseConfig = () => {
     
     // 기타 옵션
     define: {
-      // 모든 모델에 기본적으로 적용될 설정
       timestamps: true, // createdAt, updatedAt 자동 생성
       underscored: false, // camelCase 사용
       paranoid: false, // soft delete 비활성화 (보안상 완전 삭제)
@@ -82,142 +82,6 @@ const getDatabaseConfig = () => {
   return config;
 };
 
-// 모델들 불러오기 및 연관관계 설정
-const initializeModels = () => {
-  try {
-    console.log('🔧 Initializing Sequelize models...');
-    
-    // 모델들 import
-    const User = require('../models/User')(sequelize);
-    const Chat = require('../models/Chat')(sequelize);
-    const Message = require('./models/Message')(sequelize);
-    const File = require('./models/File')(sequelize);
-    const ChatParticipant = require('./models/ChatParticipant')(sequelize);
-    const MessageReaction = require('./models/MessageReaction')(sequelize);
-    const FileAccessLog = require('./models/FileAccessLog')(sequelize);
-    
-    // 연관관계 설정
-    setupAssociations();
-    
-    console.log('✅ Models initialized successfully');
-    
-    return {
-      User,
-      Chat, 
-      Message,
-      File,
-      ChatParticipant,
-      MessageReaction,
-      FileAccessLog
-    };
-    
-  } catch (error) {
-    console.error('❌ Model initialization failed:', error.message);
-    throw error;
-  }
-};
-
-// 모델 간 연관관계 설정
-const setupAssociations = () => {
-  const { models } = sequelize;
-  
-  // User 연관관계
-  models.User.hasMany(models.Chat, { 
-    foreignKey: 'createdBy', 
-    as: 'createdChats' 
-  });
-  models.User.hasMany(models.Message, { 
-    foreignKey: 'senderId', 
-    as: 'sentMessages' 
-  });
-  models.User.hasMany(models.File, { 
-    foreignKey: 'uploadedBy', 
-    as: 'uploadedFiles' 
-  });
-  
-  // Chat 연관관계
-  models.Chat.belongsTo(models.User, { 
-    foreignKey: 'createdBy', 
-    as: 'creator' 
-  });
-  models.Chat.hasMany(models.Message, { 
-    foreignKey: 'chatId', 
-    as: 'messages' 
-  });
-  models.Chat.belongsToMany(models.User, {
-    through: models.ChatParticipant,
-    foreignKey: 'chatId',
-    otherKey: 'userId',
-    as: 'participants'
-  });
-  
-  // Message 연관관계  
-  models.Message.belongsTo(models.Chat, { 
-    foreignKey: 'chatId', 
-    as: 'chat' 
-  });
-  models.Message.belongsTo(models.User, { 
-    foreignKey: 'senderId', 
-    as: 'sender' 
-  });
-  models.Message.belongsTo(models.File, { 
-    foreignKey: 'fileId', 
-    as: 'file' 
-  });
-  models.Message.belongsTo(models.Message, { 
-    foreignKey: 'replyTo', 
-    as: 'repliedMessage' 
-  });
-  models.Message.hasMany(models.MessageReaction, { 
-    foreignKey: 'messageId', 
-    as: 'reactions' 
-  });
-  
-  // File 연관관계
-  models.File.belongsTo(models.User, { 
-    foreignKey: 'uploadedBy', 
-    as: 'uploader' 
-  });
-  models.File.hasMany(models.Message, { 
-    foreignKey: 'fileId', 
-    as: 'messages' 
-  });
-  models.File.hasMany(models.FileAccessLog, { 
-    foreignKey: 'fileId', 
-    as: 'accessLogs' 
-  });
-  
-  // ChatParticipant 연관관계
-  models.ChatParticipant.belongsTo(models.Chat, { 
-    foreignKey: 'chatId', 
-    as: 'chat' 
-  });
-  models.ChatParticipant.belongsTo(models.User, { 
-    foreignKey: 'userId', 
-    as: 'user' 
-  });
-  
-  // MessageReaction 연관관계
-  models.MessageReaction.belongsTo(models.Message, { 
-    foreignKey: 'messageId', 
-    as: 'message' 
-  });
-  models.MessageReaction.belongsTo(models.User, { 
-    foreignKey: 'userId', 
-    as: 'user' 
-  });
-  
-  // FileAccessLog 연관관계
-  models.FileAccessLog.belongsTo(models.File, { 
-    foreignKey: 'fileId', 
-    as: 'file' 
-  });
-  models.FileAccessLog.belongsTo(models.User, { 
-    foreignKey: 'userId', 
-    as: 'user' 
-  });
-};
-
 // 데이터베이스 연결 및 동기화
 const connectDB = async () => {
   try {
@@ -231,7 +95,7 @@ const connectDB = async () => {
     console.log('✅ Database connection established successfully!');
     
     // 모델 초기화
-    const models = initializeModels();
+    const models = initializeModels(sequelize);
     
     // 데이터베이스 동기화
     if (process.env.NODE_ENV !== 'production') {
@@ -242,7 +106,7 @@ const connectDB = async () => {
       };
       
       console.log('🔄 Synchronizing database schema...');
-      await sequelize.sync(syncOptions);
+      await syncModels(sequelize, syncOptions);
       console.log('✅ Database synchronization completed');
     }
     
@@ -322,10 +186,27 @@ const withTransaction = async (callback) => {
   }
 };
 
+const getModels = () => {
+  if (!models) {
+    throw new Error('Models not initialized. Call connectDB() first.');
+  }
+  return models;
+};
+
+const getModel = (modelName) => {
+  const allModels = getModels();
+  if (!allModels[modelName]) {
+    throw new Error(`Model ${modelName} not found`);
+  }
+  return allModels[modelName];
+};
+
 module.exports = {
   connectDB,
   withTransaction,
   getPoolStatus,
   closeDatabase,
-  getSequelize: () => sequelize
+  getSequelize: () => sequelize,
+  getModels,
+  getModel
 };

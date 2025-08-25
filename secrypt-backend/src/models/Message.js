@@ -144,16 +144,16 @@ module.exports = (sequelize) => {
     timestamps: true,
     
     indexes: [
-      { fields: ['chatId'] },
-      { fields: ['senderId'] },
-      { fields: ['type'] },
-      { fields: ['isDeleted'] },
-      { fields: ['createdAt'] },
-      { fields: ['replyTo'] },
-      { fields: ['fileId'] },
+      { fields: ['chat_id'] },         
+      { fields: ['sender_id'] },        
+      { fields: ['type'] },            
+      { fields: ['is_deleted'] },       
+      { fields: ['createdAt'] },         
+      { fields: ['reply_to'] },          
+      { fields: ['file_id'] },           
       // 복합 인덱스
-      { fields: ['chatId', 'createdAt'] },
-      { fields: ['chatId', 'isDeleted'] }
+      { fields: ['chat_id', 'createdAt'] },    
+      { fields: ['chat_id', 'is_deleted'] }    
     ],
     
     hooks: {

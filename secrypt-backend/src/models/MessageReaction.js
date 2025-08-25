@@ -71,18 +71,18 @@ module.exports = (sequelize) => {
     indexes: [
       // 중복 반응 방지 (같은 사용자가 같은 메시지에 같은 이모지로 반응 불가)
       { 
-        fields: ['messageId', 'userId', 'emoji'], 
+        fields: ['message_id', 'user_id', 'emoji'], 
         unique: true,
         name: 'unique_message_user_emoji'
       },
-      { fields: ['messageId'] },
-      { fields: ['userId'] },
+      { fields: ['message_id'] },
+      { fields: ['user_id'] },
       { fields: ['emoji'] },
-      { fields: ['reactionType'] },
+      { fields: ['reaction_type'] },
       { fields: ['createdAt'] },
       // 복합 인덱스
-      { fields: ['messageId', 'emoji'] },
-      { fields: ['messageId', 'reactionType'] }
+      { fields: ['message_id', 'emoji'] },
+      { fields: ['message_id', 'reaction_type'] }
     ],
     
     hooks: {

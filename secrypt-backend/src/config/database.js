@@ -13,7 +13,7 @@ const getDatabaseConfig = () => {
     port: parseInt(process.env.DB_PORT) || 5432,
     dialect: process.env.DB_DIALECT || 'postgres',
     database: process.env.DB_NAME || 'secrypt_db',
-    username: process.env.DB_USER || 'secrypt_user',
+    username: process.env.DB_USERNAME || 'secrypt_user',
     password: process.env.DB_PASSWORD,
     
     // 연결 풀 설정
@@ -51,10 +51,10 @@ const getDatabaseConfig = () => {
     
     // 기타 옵션
     define: {
-      timestamps: true, // createdAt, updatedAt 자동 생성
-      underscored: false, // camelCase 사용
-      paranoid: false, // soft delete 비활성화 (보안상 완전 삭제)
-      freezeTableName: true, // 테이블명 복수형 변환 방지
+      timestamps: true,
+      underscored: false,
+      paranoid: false,
+      freezeTableName: true,
     },
     
     // 쿼리 재시도 설정
@@ -95,22 +95,31 @@ const connectDB = async () => {
     console.log('✅ Database connection established successfully!');
     
     // 모델 초기화
-    const models = initializeModels(sequelize);
+    models = initializeModels(sequelize);
     
-    // 데이터베이스 동기화
-    if (process.env.NODE_ENV !== 'production') {
-      const syncOptions = {
-        // force: process.env.DB_FORCE_SYNC === 'true', // 위험: 모든 테이블 드롭 후 재생성
-        alter: process.env.DB_ALTER_SYNC === 'true', // 안전: 스키마 변경사항만 적용
-        logging: process.env.LOG_QUERIES === 'true' ? console.log : false
-      };
+    // 데이터베이스 동기화 (개발 환경에서만)
+    if (process.env.NODE_ENV === 'development') {
+      const forceSync = process.env.DB_FORCE_SYNC === 'true';
+      const alterSync = process.env.DB_ALTER_SYNC === 'true';
       
-      console.log('🔄 Synchronizing database schema...');
-      await syncModels(sequelize, syncOptions);
-      console.log('✅ Database synchronization completed');
+      if (forceSync) {
+        console.log('⚠️ WARNING: Force sync enabled - all tables will be dropped!');
+        await sequelize.sync({ force: true, logging: console.log });
+        console.log('✅ Database force sync completed');
+      } else if (alterSync) {
+        console.log('🔄 Applying schema changes...');
+        await sequelize.sync({ alter: true, logging: console.log });
+        console.log('✅ Database alter sync completed');
+      } else {
+        // 기본적으로는 테이블이 없을 때만 생성
+        await sequelize.sync({ logging: false });
+        console.log('✅ Database sync completed');
+      }
+    } else {
+      console.log('⚠️ Skipping sync in production environment');
     }
     
-    // 연결 상태 모니터링
+    // 연결 상태 모니터링 설정
     setupConnectionMonitoring();
     
     return { sequelize, models };
@@ -118,29 +127,32 @@ const connectDB = async () => {
   } catch (error) {
     console.error('❌ Database connection failed:', error.message);
     
-    // 연결 실패 시 상세 정보 출력
+    // 상세한 에러 정보 제공
     if (error.name === 'SequelizeConnectionError') {
-      console.error('💡 Please check if the database server is running and accessible');
+      console.error('💡 Check if PostgreSQL is running and accessible');
+      console.error('💡 Verify database credentials in .env file');
     } else if (error.name === 'SequelizeAccessDeniedError') {
-      console.error('💡 Please check database credentials');
+      console.error('💡 Check database username and password');
     } else if (error.name === 'SequelizeHostNotFoundError') {
-      console.error('💡 Please check database host configuration');
+      console.error('💡 Check database host configuration');
+    } else if (error.original?.code === '3D000') {
+      console.error('💡 Database does not exist - please create it first');
+      console.error(`💡 Run: createdb ${process.env.DB_NAME || 'secrypt_db'}`);
     }
     
-    process.exit(1);
+    throw error;
   }
 };
 
 // 연결 상태 모니터링
 const setupConnectionMonitoring = () => {
   if (process.env.NODE_ENV === 'development') {
-    // 개발 환경에서 연결 풀 상태 모니터링
     setInterval(() => {
       const poolStatus = getPoolStatus();
-      if (poolStatus) {
-        console.log('📊 Connection Pool Status:', poolStatus);
+      if (poolStatus && process.env.LOG_POOL_STATUS === 'true') {
+        console.log('📊 Connection Pool:', poolStatus);
       }
-    }, 60000); // 1분마다
+    }, 60000);
   }
 };
 
@@ -168,10 +180,6 @@ const closeDatabase = async () => {
   }
 };
 
-// Graceful Shutdown
-process.on('SIGINT', closeDatabase);
-process.on('SIGTERM', closeDatabase);
-
 // 트랜잭션 헬퍼
 const withTransaction = async (callback) => {
   const transaction = await sequelize.transaction();
@@ -186,6 +194,7 @@ const withTransaction = async (callback) => {
   }
 };
 
+// 모델 접근 함수들
 const getModels = () => {
   if (!models) {
     throw new Error('Models not initialized. Call connectDB() first.');
@@ -200,6 +209,19 @@ const getModel = (modelName) => {
   }
   return allModels[modelName];
 };
+
+// Graceful Shutdown 핸들러
+process.on('SIGINT', async () => {
+  console.log('🔄 Received SIGINT, closing database connections...');
+  await closeDatabase();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('🔄 Received SIGTERM, closing database connections...');
+  await closeDatabase();
+  process.exit(0);
+});
 
 module.exports = {
   connectDB,

@@ -135,19 +135,19 @@ module.exports = (sequelize) => {
     indexes: [
       // 중복 참가 방지
       { 
-        fields: ['chatId', 'userId'], 
+        fields: ['chat_id', 'user_id'], 
         unique: true,
         name: 'unique_chat_user'
       },
-      { fields: ['chatId'] },
-      { fields: ['userId'] },
+      { fields: ['chat_id'] },
+      { fields: ['user_id'] },
       { fields: ['role'] },
-      { fields: ['joinedAt'] },
-      { fields: ['leftAt'] },
-      { fields: ['lastActiveAt'] },
+      { fields: ['joined_at'] },
+      { fields: ['left_at'] },
+      { fields: ['last_active_at'] },
       // 복합 인덱스
-      { fields: ['chatId', 'role'] },
-      { fields: ['userId', 'isFavorite'] }
+      { fields: ['chat_id', 'role'] },
+      { fields: ['user_id', 'is_favorite'] }
     ],
     
     hooks: {

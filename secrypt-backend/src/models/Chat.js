@@ -144,12 +144,12 @@ module.exports = (sequelize) => {
     timestamps: true,
     
     indexes: [
-      { fields: ['createdBy'] },
-      { fields: ['type'] },
-      { fields: ['lastActivity'] },
-      { fields: ['isArchived'] },
-      { fields: ['inviteCode'] },
-      { fields: ['isPublic'] }
+      { fields: ['created_by'] },   
+      { fields: ['type'] },            
+      { fields: ['last_activity'] },   
+      { fields: ['is_archived'] },     
+      { fields: ['invite_code'] },      
+      { fields: ['is_public'] }         
     ],
     
     hooks: {

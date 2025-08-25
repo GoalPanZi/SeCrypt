@@ -151,15 +151,15 @@ module.exports = (sequelize) => {
     timestamps: true,
     
     indexes: [
-      { fields: ['uploadedBy'] },
-      { fields: ['mimeType'] },
+      { fields: ['uploaded_by'] },
+      { fields: ['mime_type'] },
       { fields: ['status'] },
-      { fields: ['isDeleted'] },
+      { fields: ['is_deleted'] },
       { fields: ['createdAt'] },
       { fields: ['filename'] },
       // 복합 인덱스
-      { fields: ['uploadedBy', 'status'] },
-      { fields: ['mimeType', 'isDeleted'] }
+      { fields: ['uploaded_by', 'status'] },
+      { fields: ['mime_type', 'is_deleted'] }
     ],
     
     hooks: {

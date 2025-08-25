@@ -142,19 +142,19 @@ module.exports = (sequelize) => {
     timestamps: true,
     
     indexes: [
-      { fields: ['fileId'] },
-      { fields: ['userId'] },
+      { fields: ['file_id'] },
+      { fields: ['user_id'] },
       { fields: ['action'] },
       { fields: ['status'] },
       { fields: ['createdAt'] },
-      { fields: ['ipAddress'] },
-      { fields: ['securityLevel'] },
+      { fields: ['ip_address'] },
+      { fields: ['security_level'] },
       // 복합 인덱스
-      { fields: ['fileId', 'action'] },
-      { fields: ['userId', 'action'] },
-      { fields: ['fileId', 'createdAt'] },
+      { fields: ['file_id', 'action'] },
+      { fields: ['user_id', 'action'] },
+      { fields: ['file_id', 'createdAt'] },
       { fields: ['action', 'status'] },
-      { fields: ['createdAt', 'securityLevel'] }
+      { fields: ['createdAt', 'security_level'] }
     ],
     
     hooks: {

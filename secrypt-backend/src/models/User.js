@@ -27,7 +27,6 @@ module.exports = (sequelize) => {
         }
       },
       set(value) {
-        // 이메일을 소문자로 저장
         this.setDataValue('email', value.toLowerCase().trim());
       }
     },
@@ -45,7 +44,6 @@ module.exports = (sequelize) => {
         }
       },
       set(value) {
-        // 이름 앞뒤 공백 제거
         this.setDataValue('name', value.trim());
       }
     },
@@ -114,7 +112,6 @@ module.exports = (sequelize) => {
       field: 'encryption_key_salt'
     },
     
-    // 계정 설정
     twoFactorEnabled: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
@@ -127,7 +124,6 @@ module.exports = (sequelize) => {
       field: 'two_factor_secret'
     },
     
-    // 개인정보 보호 설정
     profileVisibility: {
       type: DataTypes.ENUM('public', 'contacts', 'private'),
       defaultValue: 'contacts',
@@ -140,7 +136,6 @@ module.exports = (sequelize) => {
       field: 'last_seen_visibility'
     },
     
-    // 계정 상태
     isActive: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
@@ -159,37 +154,34 @@ module.exports = (sequelize) => {
     
     indexes: [
       {
-        fields: ['email']
+        fields: ['email']  // ✅ field 속성 없음 → 그대로 사용
       },
       {
-        fields: ['status']
+        fields: ['status']  // ✅ field 속성 없음 → 그대로 사용
       },
       {
-        fields: ['emailVerified']
+        fields: ['email_verified']  // ✅ 수정: emailVerified → email_verified
       },
       {
-        fields: ['isActive']
+        fields: ['is_active']  // ✅ 수정: isActive → is_active
       },
       {
-        fields: ['createdAt']
+        fields: ['createdAt']  // ✅ timestamps 컬럼은 그대로
       }
     ],
     
     hooks: {
       beforeCreate: async (user) => {
-        // 암호화 솔트 생성
         if (!user.encryptionKeySalt) {
           user.encryptionKeySalt = crypto.randomBytes(32).toString('hex');
         }
         
-        // 이메일 인증 토큰 생성
         if (!user.emailVerificationToken) {
           user.emailVerificationToken = crypto.randomBytes(32).toString('hex');
         }
       },
       
       beforeUpdate: (user) => {
-        // 상태 업데이트 시 lastSeen 업데이트
         if (user.changed('status') && user.status === 'online') {
           user.lastSeen = new Date();
         }
@@ -205,7 +197,7 @@ module.exports = (sequelize) => {
     }
   });
   
-  // 인스턴스 메서드
+  // 인스턴스 메서드들은 그대로...
   User.prototype.comparePassword = async function(candidatePassword) {
     try {
       return await bcrypt.compare(candidatePassword, this.passwordHash);
@@ -217,7 +209,7 @@ module.exports = (sequelize) => {
   User.prototype.generatePasswordResetToken = function() {
     const token = crypto.randomBytes(32).toString('hex');
     this.passwordResetToken = crypto.createHash('sha256').update(token).digest('hex');
-    this.passwordResetExpires = new Date(Date.now() + 10 * 60 * 1000); // 10분 후 만료
+    this.passwordResetExpires = new Date(Date.now() + 10 * 60 * 1000);
     return token;
   };
   
@@ -252,10 +244,8 @@ module.exports = (sequelize) => {
   
   User.prototype.toPublicJSON = function() {
     const safeUser = this.toSafeJSON();
-    // 공개 프로필에서는 더 제한적인 정보만 노출
     const publicFields = ['id', 'name', 'profileImage', 'status'];
     
-    // 개인정보 보호 설정에 따라 필드 필터링
     if (this.profileVisibility === 'private') {
       return { id: this.id, name: this.name };
     }
@@ -272,7 +262,7 @@ module.exports = (sequelize) => {
       }, {});
   };
   
-  // 클래스 메서드 (Static methods)
+  // 클래스 메서드들도 그대로...
   User.hashPassword = async function(password) {
     const saltRounds = parseInt(process.env.BCRYPT_ROUNDS) || 12;
     return await bcrypt.hash(password, saltRounds);
